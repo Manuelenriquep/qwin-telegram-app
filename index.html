@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN Lite</title>
+    <title>Q-WIN Final</title>
 
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
@@ -13,42 +13,20 @@
             color: white; width: 100%; padding: 20px;
             font-size: 18px; font-weight: bold; border: none; border-radius: 16px;
             margin-top: 20px; cursor: pointer; box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.5);
-            transition: transform 0.1s;
         }
-        .boton-gigante:active { transform: scale(0.98); }
-        .boton-gigante:disabled { background: #475569; cursor: not-allowed; box-shadow: none; }
+        .boton-gigante:disabled { background: #475569; cursor: wait; }
 
         #consoleLog { 
             background: #1e293b; color: #4ade80; 
             font-family: monospace; padding: 12px; border-radius: 12px; 
-            height: 120px; overflow-y: auto; text-align: left; font-size: 11px; 
+            height: 140px; overflow-y: auto; text-align: left; font-size: 11px; 
             margin-top: 20px; border: 1px solid #334155;
         }
-        
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 10px; }
-        .bg-red { background: #ef444420; color: #fca5a5; border: 1px solid #ef4444; }
-        .bg-green { background: #22c55e20; color: #86efac; border: 1px solid #22c55e; }
     </style>
-
-    <script>
-        // Sistema de Errores en Pantalla
-        window.onerror = function(msg, source, lineno) {
-            log("💀 ERROR: " + msg);
-            document.getElementById('mainTitle').innerText = "⚠️ ERROR DETECTADO";
-            document.getElementById('mainTitle').style.color = "#ef4444";
-        };
-        function log(msg) {
-            const c = document.getElementById('consoleLog');
-            const time = new Date().toLocaleTimeString().split(' ')[0];
-            c.innerHTML = `[${time}] ${msg}<br>` + c.innerHTML;
-        }
-    </script>
 </head>
 <body>
 
-    <h2 id="mainTitle" class="text-xl font-bold mb-2">🚀 Q-WIN LITE</h2>
-    <div id="statusBadge" class="status-badge bg-red">Desconectado</div>
-
+    <h2 class="text-xl font-bold mb-2">🚀 Q-WIN FINAL</h2>
     <div id="consoleLog">Esperando inicio...</div>
 
     <button id="actionBtn" class="boton-gigante" onclick="iniciarSistema()">
@@ -56,16 +34,22 @@
     </button>
 
     <script>
-        // --- 1. CARGADOR INTELIGENTE ---
+        function log(msg) {
+            const c = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            c.innerHTML = `[${time}] ${msg}<br>` + c.innerHTML;
+        }
+
+        // --- 1. CARGADOR CON RESPALDO (Plan A -> Plan B) ---
         function iniciarSistema() {
             const btn = document.getElementById('actionBtn');
-            btn.innerText = "⏳ Descargando Motores...";
+            btn.innerText = "⏳ Descargando...";
             btn.disabled = true;
 
-            // Lista de Scripts (SIN spl-token, esa la borramos)
+            // AMBAS LIBRERÍAS DESDE JSDELIVR (La que funcionó)
             const scripts = [
                 "https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js",
-                "https://unpkg.com/@project-serum/anchor@0.26.0/dist/anchor.min.js"
+                "https://cdn.jsdelivr.net/npm/@project-serum/anchor@0.26.0/dist/anchor.min.js"
             ];
 
             cargarSecuencia(scripts, 0);
@@ -80,28 +64,36 @@
             const script = document.createElement('script');
             script.src = lista[index];
             script.onload = () => {
-                const nombre = lista[index].includes("web3") ? "Web3 Core" : "Anchor Framework";
-                log("✅ Instalado: " + nombre);
+                log("✅ Instalado: " + lista[index].split('/').slice(-2,-1)); 
                 cargarSecuencia(lista, index + 1);
             };
             script.onerror = () => {
-                log("❌ Falló descarga: " + lista[index]);
-                document.getElementById('actionBtn').innerText = "Reintentar";
-                document.getElementById('actionBtn').disabled = false;
+                log("⚠️ Falló JSDelivr. Intentando Plan B...");
+                // Plan B: Intentar descargar desde UNPKG solo si falla el primero
+                const backupUrl = lista[index].replace("cdn.jsdelivr.net/npm", "unpkg.com");
+                const backupScript = document.createElement('script');
+                backupScript.src = backupUrl;
+                backupScript.onload = () => {
+                    log("✅ Recuperado con Plan B");
+                    cargarSecuencia(lista, index + 1);
+                };
+                backupScript.onerror = () => {
+                    log("❌ ERROR FATAL: No se pudo descargar librería.");
+                    alert("Error de Red. Revisa tu conexión.");
+                };
+                document.head.appendChild(backupScript);
             };
             document.head.appendChild(script);
         }
 
-        // --- 2. LÓGICA DEL NEGOCIO (Sin Librerías Extra) ---
+        // --- 2. LÓGICA DE NEGOCIO ---
         let connection, walletAddress;
         
         function sistemaListo() {
-            log("🚀 Todo listo. Conectando...");
-            document.getElementById('statusBadge').innerText = "Motores Listos";
-            document.getElementById('statusBadge').className = "status-badge bg-green";
-            
+            log("🚀 MOTORES LISTOS.");
             const btn = document.getElementById('actionBtn');
             btn.innerText = "🔌 CONECTAR BILLETERA";
+            btn.style.background = "#10b981"; // Verde
             btn.disabled = false;
             btn.onclick = conectarWallet;
         }
@@ -111,15 +103,12 @@
                 if ("solana" in window) {
                     const resp = await window.solana.connect();
                     walletAddress = resp.publicKey.toString();
-                    log("🔑 Wallet: " + walletAddress.slice(0,6) + "...");
+                    log("🔑 Wallet: " + walletAddress.slice(0,4) + "...");
                     
-                    // Cambiar botón a comprar
                     const btn = document.getElementById('actionBtn');
                     btn.innerText = "🎟️ COMPRAR TICKET ($1)";
-                    btn.style.background = "linear-gradient(135deg, #10b981, #059669)";
                     btn.onclick = comprarTicket;
                 } else {
-                    log("⚠️ Redirigiendo a Phantom...");
                     window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}?ref=${encodeURIComponent(window.location.href)}`;
                 }
             } catch (err) { log("Error Wallet: " + err.message); }
@@ -131,7 +120,7 @@
             btn.disabled = true;
 
             try {
-                log("⚙️ Preparando transacción...");
+                log("⚙️ Iniciando transacción...");
                 connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
                 const provider = new anchor.AnchorProvider(connection, window.solana, { preflightCommitment: "confirmed" });
                 
@@ -140,16 +129,13 @@
                 const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
                 const USDC_MINT = new solanaWeb3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
                 
-                // IDL Mínimo
                 const idl = {"version":"0.1.0","name":"perpetual_usdc_lottery","instructions":[{"name":"buyTicket","accounts":[{"name":"room","isMut":true,"isSigner":false},{"name":"vault","isMut":true,"isSigner":false},{"name":"buyer","isMut":true,"isSigner":true},{"name":"buyerAta","isMut":true,"isSigner":false},{"name":"usdcMint","isMut":false,"isSigner":false},{"name":"tokenProgram","isMut":false,"isSigner":false}],"args":[]}]};
                 const program = new anchor.Program(idl, PROGRAM_ID, provider);
 
-                // CÁLCULOS MANUALES (Reemplazan a spl-token)
                 const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
                     [new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID
                 );
 
-                // El Truco Matemático para hallar la cuenta USDC del usuario
                 const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
                 const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
                 const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress(
@@ -157,24 +143,19 @@
                     ASSOCIATED_TOKEN_PROGRAM_ID
                 );
 
-                log("📝 Enviando a Phantom...");
                 await program.methods.buyTicket().accounts({
-                    room: ROOM_ID,
-                    vault: vaultPda,
-                    buyer: new solanaWeb3.PublicKey(walletAddress),
-                    buyerAta: buyerAta,
-                    usdcMint: USDC_MINT,
-                    tokenProgram: TOKEN_PROGRAM_ID
+                    room: ROOM_ID, vault: vaultPda, buyer: new solanaWeb3.PublicKey(walletAddress),
+                    buyerAta: buyerAta, usdcMint: USDC_MINT, tokenProgram: TOKEN_PROGRAM_ID
                 }).rpc();
 
-                alert("✅ ¡TICKET COMPRADO EXITOSAMENTE!");
-                log("🎉 ¡ÉXITO TOTAL!");
+                alert("✅ ¡COMPRA EXITOSA! 🎉");
+                log("🎉 TICKET COMPRADO");
                 btn.innerText = "🎟️ COMPRAR OTRO";
                 btn.disabled = false;
 
             } catch (err) {
-                log("❌ Error Transacción: " + err.message);
-                alert("Error: " + err.message);
+                log("❌ Error: " + err.message);
+                alert("Fallo: " + err.message);
                 btn.innerText = "Reintentar";
                 btn.disabled = false;
             }
