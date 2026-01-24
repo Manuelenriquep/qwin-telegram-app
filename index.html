@@ -3,94 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN Test v2</title>
+    <title>Q-WIN Lite</title>
 
     <style>
-        body { background: #111; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        
         .boton-gigante {
-            background-color: #00ff88; color: #000; width: 100%; padding: 20px;
-            font-size: 20px; font-weight: bold; border: none; border-radius: 15px;
-            margin-top: 20px; cursor: pointer; box-shadow: 0 5px 0 #009955;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white; width: 100%; padding: 20px;
+            font-size: 18px; font-weight: bold; border: none; border-radius: 16px;
+            margin-top: 20px; cursor: pointer; box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.5);
+            transition: transform 0.1s;
         }
-        .boton-gigante:active { transform: translateY(4px); box-shadow: 0 1px 0 #009955; }
-        #errorBox { background: #ff4444; color: white; padding: 10px; margin: 10px 0; border-radius: 8px; text-align: left; display: none; }
-        #consoleLog { background: #222; color: #0f0; font-family: monospace; padding: 10px; border-radius: 8px; height: 100px; overflow-y: scroll; text-align: left; font-size: 10px; }
+        .boton-gigante:active { transform: scale(0.98); }
+        .boton-gigante:disabled { background: #475569; cursor: not-allowed; box-shadow: none; }
+
+        #consoleLog { 
+            background: #1e293b; color: #4ade80; 
+            font-family: monospace; padding: 12px; border-radius: 12px; 
+            height: 120px; overflow-y: auto; text-align: left; font-size: 11px; 
+            margin-top: 20px; border: 1px solid #334155;
+        }
+        
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 10px; }
+        .bg-red { background: #ef444420; color: #fca5a5; border: 1px solid #ef4444; }
+        .bg-green { background: #22c55e20; color: #86efac; border: 1px solid #22c55e; }
     </style>
 
     <script>
+        // Sistema de Errores en Pantalla
         window.onerror = function(msg, source, lineno) {
-            document.getElementById('errorBox').style.display = 'block';
-            document.getElementById('errorBox').innerHTML += "💀 ERROR: " + msg + "<br>Línea: " + lineno + "<hr>";
+            log("💀 ERROR: " + msg);
+            document.getElementById('mainTitle').innerText = "⚠️ ERROR DETECTADO";
+            document.getElementById('mainTitle').style.color = "#ef4444";
         };
         function log(msg) {
             const c = document.getElementById('consoleLog');
-            c.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + c.innerHTML;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            c.innerHTML = `[${time}] ${msg}<br>` + c.innerHTML;
         }
     </script>
 </head>
 <body>
-    <h1>🚑 DIAGNÓSTICO V2</h1>
-    <div id="errorBox"></div>
-    <div id="consoleLog">Esperando...</div>
 
-    <button id="testBtn" class="boton-gigante" onclick="cargarScripts()">
-        👆 TOCAME OTRA VEZ
-    </button>
+    <h2 id="mainTitle" class="text-xl font-bold mb-2">🚀 Q-WIN LITE</h2>
+    <div id="statusBadge" class="status-badge bg-red">Desconectado</div>
 
-    <button id="connectBtn" class="boton-gigante" style="background-color: #3399ff; display:none;" onclick="conectarReal()">
-        🔌 CONECTAR PHANTOM
+    <div id="consoleLog">Esperando inicio...</div>
+
+    <button id="actionBtn" class="boton-gigante" onclick="iniciarSistema()">
+        ⚡ INICIAR SISTEMA
     </button>
 
     <script>
-        function cargarScripts() {
-            const btn = document.getElementById('testBtn');
-            btn.innerText = "⏳ Descargando de JSDelivr...";
+        // --- 1. CARGADOR INTELIGENTE ---
+        function iniciarSistema() {
+            const btn = document.getElementById('actionBtn');
+            btn.innerText = "⏳ Descargando Motores...";
             btn.disabled = true;
 
-            // CAMBIO CLAVE: Usamos jsdelivr en lugar de unpkg
+            // Lista de Scripts (SIN spl-token, esa la borramos)
             const scripts = [
                 "https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js",
-                "https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.0/lib/index.iife.min.js"
+                "https://unpkg.com/@project-serum/anchor@0.26.0/dist/anchor.min.js"
             ];
 
-            let cargados = 0;
-            scripts.forEach(url => {
-                const script = document.createElement('script');
-                script.src = url;
-                script.onload = () => {
-                    cargados++;
-                    log("✅ Cargado: " + url.split('/').slice(-3,-2)); // Muestra nombre librería
-                    if (cargados === scripts.length) {
-                        sistemaListo();
-                    }
-                };
-                script.onerror = () => {
-                    alert("Falló la descarga de: " + url);
-                    btn.innerText = "❌ Reintentar";
-                    btn.disabled = false;
-                };
-                document.head.appendChild(script);
-            });
+            cargarSecuencia(scripts, 0);
         }
 
+        function cargarSecuencia(lista, index) {
+            if (index >= lista.length) {
+                sistemaListo();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = lista[index];
+            script.onload = () => {
+                const nombre = lista[index].includes("web3") ? "Web3 Core" : "Anchor Framework";
+                log("✅ Instalado: " + nombre);
+                cargarSecuencia(lista, index + 1);
+            };
+            script.onerror = () => {
+                log("❌ Falló descarga: " + lista[index]);
+                document.getElementById('actionBtn').innerText = "Reintentar";
+                document.getElementById('actionBtn').disabled = false;
+            };
+            document.head.appendChild(script);
+        }
+
+        // --- 2. LÓGICA DEL NEGOCIO (Sin Librerías Extra) ---
+        let connection, walletAddress;
+        
         function sistemaListo() {
-            log("🚀 LIBRERÍAS LISTAS.");
-            document.getElementById('testBtn').style.display = 'none';
-            document.getElementById('connectBtn').style.display = 'block';
+            log("🚀 Todo listo. Conectando...");
+            document.getElementById('statusBadge').innerText = "Motores Listos";
+            document.getElementById('statusBadge').className = "status-badge bg-green";
+            
+            const btn = document.getElementById('actionBtn');
+            btn.innerText = "🔌 CONECTAR BILLETERA";
+            btn.disabled = false;
+            btn.onclick = conectarWallet;
         }
 
-        async function conectarReal() {
+        async function conectarWallet() {
             try {
                 if ("solana" in window) {
                     const resp = await window.solana.connect();
-                    alert("🎉 ¡EXITO! Billetera conectada: " + resp.publicKey.toString().slice(0,4));
+                    walletAddress = resp.publicKey.toString();
+                    log("🔑 Wallet: " + walletAddress.slice(0,6) + "...");
+                    
+                    // Cambiar botón a comprar
+                    const btn = document.getElementById('actionBtn');
+                    btn.innerText = "🎟️ COMPRAR TICKET ($1)";
+                    btn.style.background = "linear-gradient(135deg, #10b981, #059669)";
+                    btn.onclick = comprarTicket;
                 } else {
-                    // Deep link corregido para Android/iOS
-                    const url = window.location.href;
-                    const link = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`;
-                    window.location.href = link;
+                    log("⚠️ Redirigiendo a Phantom...");
+                    window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}?ref=${encodeURIComponent(window.location.href)}`;
                 }
-            } catch (err) { alert("Error: " + err.message); }
+            } catch (err) { log("Error Wallet: " + err.message); }
+        }
+
+        async function comprarTicket() {
+            const btn = document.getElementById('actionBtn');
+            btn.innerText = "⏳ Procesando...";
+            btn.disabled = true;
+
+            try {
+                log("⚙️ Preparando transacción...");
+                connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                const provider = new anchor.AnchorProvider(connection, window.solana, { preflightCommitment: "confirmed" });
+                
+                // DATOS
+                const PROGRAM_ID = new solanaWeb3.PublicKey("DVjKKx2fSQSmPk8JuMeF367bESSx6orwpJcM5CYcALLe");
+                const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
+                const USDC_MINT = new solanaWeb3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+                
+                // IDL Mínimo
+                const idl = {"version":"0.1.0","name":"perpetual_usdc_lottery","instructions":[{"name":"buyTicket","accounts":[{"name":"room","isMut":true,"isSigner":false},{"name":"vault","isMut":true,"isSigner":false},{"name":"buyer","isMut":true,"isSigner":true},{"name":"buyerAta","isMut":true,"isSigner":false},{"name":"usdcMint","isMut":false,"isSigner":false},{"name":"tokenProgram","isMut":false,"isSigner":false}],"args":[]}]};
+                const program = new anchor.Program(idl, PROGRAM_ID, provider);
+
+                // CÁLCULOS MANUALES (Reemplazan a spl-token)
+                const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID
+                );
+
+                // El Truco Matemático para hallar la cuenta USDC del usuario
+                const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+                const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), USDC_MINT.toBuffer()],
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+
+                log("📝 Enviando a Phantom...");
+                await program.methods.buyTicket().accounts({
+                    room: ROOM_ID,
+                    vault: vaultPda,
+                    buyer: new solanaWeb3.PublicKey(walletAddress),
+                    buyerAta: buyerAta,
+                    usdcMint: USDC_MINT,
+                    tokenProgram: TOKEN_PROGRAM_ID
+                }).rpc();
+
+                alert("✅ ¡TICKET COMPRADO EXITOSAMENTE!");
+                log("🎉 ¡ÉXITO TOTAL!");
+                btn.innerText = "🎟️ COMPRAR OTRO";
+                btn.disabled = false;
+
+            } catch (err) {
+                log("❌ Error Transacción: " + err.message);
+                alert("Error: " + err.message);
+                btn.innerText = "Reintentar";
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
