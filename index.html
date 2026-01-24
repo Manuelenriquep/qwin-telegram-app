@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Q-WIN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@project-serum/anchor@latest/dist/anchor.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+    
+    <style>
+        body { 
+            background-color: var(--tg-theme-bg-color, #0f172a); 
+            color: var(--tg-theme-text-color, #e2e8f0); 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        .btn-main {
+            background-color: var(--tg-theme-button-color, #3b82f6);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        .card {
+            background-color: var(--tg-theme-secondary-bg-color, rgba(30, 41, 59, 0.5));
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4">
+
+    <div class="flex justify-between items-center mb-6 mt-2">
+        <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-black tracking-tighter">Q-WIN</h1>
+            <span class="bg-blue-900 text-blue-200 text-xs px-2 py-0.5 rounded-full">BETA</span>
+        </div>
+        <button id="walletBtn" onclick="conectarWallet()" class="text-xs font-bold bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg">
+            🔌 Conectar Wallet
+        </button>
+    </div>
+
+    <div class="card rounded-2xl p-6 text-center shadow-lg mb-6 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Pozo Actual</p>
+        <h2 id="potDisplay" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">$0.00</h2>
+        <p class="text-slate-500 text-xs mt-1">USDC</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="card p-4 rounded-xl text-center">
+            <span class="text-2xl">🎟️</span>
+            <p class="text-xs text-slate-400 mt-1">Jugadores</p>
+            <p id="playersDisplay" class="font-bold text-lg">0/50</p>
+        </div>
+        <div class="card p-4 rounded-xl text-center">
+            <span class="text-2xl">🕒</span>
+            <p class="text-xs text-slate-400 mt-1">Ronda</p>
+            <p id="roundDisplay" class="font-bold text-lg">#1</p>
+        </div>
+    </div>
+
+    <div class="flex-grow"></div> <div id="statusMsg" class="text-center text-xs text-slate-500 mb-2 h-4">...</div>
+    
+    <button id="mainBtn" onclick="comprarTicket()" disabled class="w-full btn-main py-4 rounded-xl font-bold text-lg shadow-xl opacity-50 cursor-not-allowed mb-4">
+        Comprar Ticket ($1 USDC)
+    </button>
+
+    <script>
+        // ================= CONFIGURACIÓN =================
+        const PROGRAM_ID = "PEGUE_AQUI_SU_PROGRAM_ID"; 
+        const ROOM_ID = "H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt"; 
+        const USDC_MINT = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"; 
+        // =================================================
+
+        // INICIALIZAR TELEGRAM
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Pantalla completa
+        tg.ready();
+
+        // Variables Globales
+        let connection, provider, program;
+        let walletAddress = null;
+
+        // IDL Mínimo
+        const idl = {
+            "version": "0.1.0", "name": "perpetual_usdc_lottery",
+            "instructions": [
+                {"name": "buyTicket", "accounts": [{"name": "room", "isMut": true, "isSigner": false},{"name": "vault", "isMut": true, "isSigner": false},{"name": "buyer", "isMut": true, "isSigner": true},{"name": "buyerAta", "isMut": true, "isSigner": false},{"name": "usdcMint", "isMut": false, "isSigner": false},{"name": "tokenProgram", "isMut": false, "isSigner": false}], "args": []}
+            ],
+            "accounts": [{"name": "Room", "type": {"kind": "struct", "fields": [{"name": "authority", "type": "publicKey"},{"name": "roomId", "type": "u8"},{"name": "ticketPrice", "type": "u64"},{"name": "capacity", "type": "u8"},{"name": "totalPot", "type": "u64"},{"name": "participants", "type": {"vec": {"defined": "Participant"}}},{"name": "active", "type": "bool"},{"name": "winner", "type": "publicKey"},{"name": "round", "type": "u64"},{"name": "bump", "type": "u8"}]}}]
+        };
+
+        async function conectarWallet() {
+            // Detectar Phantom (Móvil o Desktop)
+            const provider = window.phantom?.solana || window.solana;
+            
+            if (provider) {
+                try {
+                    const resp = await provider.connect();
+                    walletAddress = resp.publicKey.toString();
+                    document.getElementById("walletBtn").innerText = walletAddress.slice(0,4) + ".." + walletAddress.slice(-4);
+                    document.getElementById("statusMsg").innerText = "Billetera conectada";
+                    document.getElementById("mainBtn").disabled = false;
+                    document.getElementById("mainBtn").classList.remove("opacity-50", "cursor-not-allowed");
+                    iniciarPrograma();
+                } catch (err) { console.error(err); }
+            } else {
+                // Si está en Telegram móvil y no tiene wallet, abrir enlace profundo
+                window.open("https://phantom.app/ul/browse/" + window.location.href, "_blank");
+            }
+        }
+
+        async function iniciarPrograma() {
+            connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+            const provider = new anchor.AnchorProvider(connection, window.solana, { preflightCommitment: "processed" });
+            program = new anchor.Program(idl, new solanaWeb3.PublicKey(PROGRAM_ID), provider);
+            actualizarDatos();
+            setInterval(actualizarDatos, 5000);
+        }
+
+        async function actualizarDatos() {
+            try {
+                const room = await program.account.room.fetch(new solanaWeb3.PublicKey(ROOM_ID));
+                
+                // Actualizar UI
+                document.getElementById("potDisplay").innerText = "$" + (room.totalPot.toNumber() / 1000000).toFixed(2);
+                document.getElementById("playersDisplay").innerText = room.participants.length + "/" + room.capacity;
+                document.getElementById("roundDisplay").innerText = "#" + room.round.toNumber();
+
+                // Lógica de Botón
+                const btn = document.getElementById("mainBtn");
+                if (!room.active) {
+                    btn.innerText = "🏆 SORTEANDO...";
+                    btn.disabled = true;
+                    tg.HapticFeedback.notificationOccurred('success');
+                } else if (room.participants.length >= room.capacity) {
+                    btn.innerText = "⛔ SALA LLENA";
+                    btn.disabled = true;
+                } else {
+                    btn.innerText = `Comprar Ticket ($${room.ticketPrice.toNumber()/1000000} USDC)`;
+                }
+
+            } catch (e) { console.log(e); }
+        }
+
+        async function comprarTicket() {
+            if(!program) return;
+            const btn = document.getElementById("mainBtn");
+            btn.innerText = "⏳ Procesando...";
+            btn.disabled = true;
+            
+            try {
+                const roomPubkey = new solanaWeb3.PublicKey(ROOM_ID);
+                const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new TextEncoder().encode("vault"), roomPubkey.toBuffer()],
+                    program.programId
+                );
+                const usdcMint = new solanaWeb3.PublicKey(USDC_MINT);
+                const userPubkey = new solanaWeb3.PublicKey(walletAddress);
+                const userAta = await splToken.getAssociatedTokenAddress(usdcMint, userPubkey);
+
+                await program.methods.buyTicket().accounts({
+                    room: roomPubkey, vault: vaultPda, buyer: userPubkey, buyerAta: userAta, usdcMint: usdcMint, tokenProgram: splToken.TOKEN_PROGRAM_ID
+                }).rpc();
+
+                tg.HapticFeedback.notificationOccurred('success'); // Vibrar celular
+                tg.showAlert("¡Ticket Comprado! Buena suerte.");
+                actualizarDatos();
+            } catch (err) {
+                console.error(err);
+                tg.showAlert("Error: Verifica que tengas USDC y SOL.");
+                btn.innerText = "Reintentar";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
