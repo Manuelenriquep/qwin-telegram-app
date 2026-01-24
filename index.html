@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN V2</title>
+    <title>Q-WIN V3</title>
 
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         
-        /* Botón Principal (Verde) */
         .btn-action {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white; width: 100%; padding: 18px;
@@ -16,10 +15,8 @@
             margin-top: 15px; cursor: pointer; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
         }
         
-        /* Botón Secundario (Azul) */
         .btn-copy {
-            background: #3b82f6;
-            color: white; width: 100%; padding: 15px;
+            background: #3b82f6; color: white; width: 100%; padding: 15px;
             font-size: 16px; font-weight: bold; border: none; border-radius: 16px;
             margin-top: 10px; cursor: pointer;
         }
@@ -34,11 +31,10 @@
 </head>
 <body>
 
-    <h2 class="text-xl font-bold mb-1">🎱 Q-WIN MOBILE</h2>
-    <p class="text-xs text-gray-400 mb-4">Motor Web3 Nativo</p>
+    <h2 class="text-xl font-bold mb-1">🎱 Q-WIN FIXED</h2>
+    <p class="text-xs text-gray-400 mb-4">Versión Browser-Native</p>
 
     <div id="consoleLog">Iniciando...</div>
-
     <div id="buttonArea">
         <button id="loadBtn" class="btn-action" onclick="iniciarCarga()">
             🚀 CARGAR SISTEMA
@@ -52,7 +48,7 @@
             c.innerHTML = `<div style="color:${color}">[${time}] ${msg}</div>` + c.innerHTML;
         }
 
-        // --- 1. CARGAMOS EL CEREBRO (Que ya sabemos que funciona) ---
+        // --- 1. CARGA MOTOR WEB3 ---
         function iniciarCarga() {
             const btn = document.getElementById('loadBtn');
             btn.innerText = "⏳ Cargando...";
@@ -66,59 +62,41 @@
                 sistemaListo();
             };
             script.onerror = () => {
-                log("❌ Error de Red. Revisa tu internet.", '#f87171');
+                log("❌ Error de Red.", '#f87171');
                 btn.innerText = "Reintentar";
                 btn.disabled = false;
             };
             document.head.appendChild(script);
         }
 
-        // --- 2. SISTEMA LISTO: MODO PHANTOM ---
+        // --- 2. SISTEMA LISTO ---
         let connection, walletAddress;
         
         function sistemaListo() {
             const area = document.getElementById('buttonArea');
-            area.innerHTML = ""; // Limpiar botones viejos
+            area.innerHTML = ""; 
 
-            // VERIFICAR DÓNDE ESTAMOS
             if ("solana" in window) {
-                // ESTAMOS DENTRO DE PHANTOM (EXCELENTE)
                 log("🎉 Estás dentro de Phantom.", 'cyan');
-                
                 const btnConnect = document.createElement('button');
                 btnConnect.className = "btn-action";
                 btnConnect.innerText = "🔌 CONECTAR BILLETERA";
                 btnConnect.onclick = conectarWallet;
                 area.appendChild(btnConnect);
-
             } else {
-                // ESTAMOS EN TELEGRAM (HAY QUE SALIR)
-                log("⚠️ Estás en Telegram. Debes ir a Phantom.", 'yellow');
-
-                // Botón 1: Intentar abrir App directo
-                const btnDeep = document.createElement('button');
-                btnDeep.className = "btn-action";
-                btnDeep.innerText = "🦊 ABRIR EN APP PHANTOM";
-                btnDeep.onclick = () => {
-                     const url = window.location.href;
-                     window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`;
-                };
-                area.appendChild(btnDeep);
-
-                // Botón 2: Copiar Link (Plan B)
+                log("⚠️ Estás fuera de Phantom.", 'yellow');
                 const btnCopy = document.createElement('button');
                 btnCopy.className = "btn-copy";
-                btnCopy.innerText = "📋 COPIAR ENLACE (MANUAL)";
+                btnCopy.innerText = "📋 COPIAR ENLACE";
                 btnCopy.onclick = () => {
                     navigator.clipboard.writeText(window.location.href);
-                    alert("✅ ¡Enlace Copiado!\n\n1. Abre tu App de Phantom.\n2. Ve al Navegador (Mundo 🌐).\n3. Pega el enlace arriba.");
-                    btnCopy.innerText = "✅ COPIADO";
+                    alert("✅ Enlace Copiado. Pégalo en Phantom.");
                 };
                 area.appendChild(btnCopy);
             }
         }
 
-        // --- 3. CONEXIÓN Y COMPRA (Lógica Nativa) ---
+        // --- 3. CONEXIÓN ---
         async function conectarWallet() {
             try {
                 const resp = await window.solana.connect();
@@ -131,6 +109,7 @@
             } catch (err) { log("Error: " + err.message, '#f87171'); }
         }
 
+        // --- 4. COMPRA (CORREGIDA SIN BUFFER) ---
         async function comprarTicketNativo() {
             const btn = document.querySelector('.btn-action');
             btn.innerText = "⏳ Procesando...";
@@ -146,12 +125,15 @@
                 const TOKEN_PROG = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
                 const ASSOC_TOKEN = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
-                // Discriminador 'global:buy_ticket'
+                // --- AQUÍ ESTABA EL ERROR ---
+                // El navegador no entiende 'Buffer', pero sí 'Uint8Array'.
+                // Pasamos los números directamente.
                 const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]);
 
                 const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
                     [new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID
                 );
+                
                 const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress(
                     [new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROG.toBuffer(), USDC_MINT.toBuffer()],
                     ASSOC_TOKEN
@@ -167,18 +149,20 @@
                         { pubkey: TOKEN_PROG, isSigner: false, isWritable: false }
                     ],
                     programId: PROGRAM_ID,
-                    data: Buffer.from(discriminador)
+                    data: discriminador // <--- CAMBIO CLAVE: Sin 'Buffer.from'
                 });
 
                 const transaction = new solanaWeb3.Transaction().add(instruction);
                 transaction.feePayer = new solanaWeb3.PublicKey(walletAddress);
+                
                 const { blockhash } = await connection.getLatestBlockhash();
                 transaction.recentBlockhash = blockhash;
 
+                log("📝 Pidiendo firma...", 'cyan');
                 const { signature } = await window.solana.signAndSendTransaction(transaction);
                 
                 log("✅ ¡COMPRA EXITOSA!", '#4ade80');
-                alert("🎉 ¡TICKET COMPRADO! 🎉\nHash: " + signature.slice(0,8));
+                alert("🎉 ¡FELICITACIONES! \nTicket Comprado.\nHash: " + signature.slice(0,8));
                 btn.innerText = "🎟️ COMPRAR OTRO";
                 btn.disabled = false;
 
