@@ -3,32 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN NATIVE v2</title>
+    <title>Q-WIN V2</title>
 
     <style>
-        body { background: #0b1120; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        .boton-gigante {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white; width: 100%; padding: 20px;
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        
+        /* Botón Principal (Verde) */
+        .btn-action {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; width: 100%; padding: 18px;
             font-size: 18px; font-weight: bold; border: none; border-radius: 16px;
-            margin-top: 20px; cursor: pointer; box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.5);
+            margin-top: 15px; cursor: pointer; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
         }
+        
+        /* Botón Secundario (Azul) */
+        .btn-copy {
+            background: #3b82f6;
+            color: white; width: 100%; padding: 15px;
+            font-size: 16px; font-weight: bold; border: none; border-radius: 16px;
+            margin-top: 10px; cursor: pointer;
+        }
+
         #consoleLog { 
             background: #1e293b; color: #4ade80; 
             font-family: monospace; padding: 15px; border-radius: 12px; 
-            height: 150px; overflow-y: auto; text-align: left; font-size: 11px; 
+            height: 120px; overflow-y: auto; text-align: left; font-size: 11px; 
             margin-top: 20px; border: 1px solid #334155;
         }
     </style>
 </head>
 <body>
 
-    <h2 class="text-xl font-bold mb-1">⚡ Q-WIN FINAL</h2>
-    <div id="consoleLog">Sistema detenido.</div>
+    <h2 class="text-xl font-bold mb-1">🎱 Q-WIN MOBILE</h2>
+    <p class="text-xs text-gray-400 mb-4">Motor Web3 Nativo</p>
 
-    <button id="actionBtn" class="boton-gigante" onclick="iniciarCarga()">
-        🚀 INICIAR
-    </button>
+    <div id="consoleLog">Iniciando...</div>
+
+    <div id="buttonArea">
+        <button id="loadBtn" class="btn-action" onclick="iniciarCarga()">
+            🚀 CARGAR SISTEMA
+        </button>
+    </div>
 
     <script>
         function log(msg, color='#4ade80') {
@@ -37,9 +52,9 @@
             c.innerHTML = `<div style="color:${color}">[${time}] ${msg}</div>` + c.innerHTML;
         }
 
-        // 1. CARGA LIGERA (Solo Web3, sin Anchor)
+        // --- 1. CARGAMOS EL CEREBRO (Que ya sabemos que funciona) ---
         function iniciarCarga() {
-            const btn = document.getElementById('actionBtn');
+            const btn = document.getElementById('loadBtn');
             btn.innerText = "⏳ Cargando...";
             btn.disabled = true;
 
@@ -51,71 +66,96 @@
                 sistemaListo();
             };
             script.onerror = () => {
-                log("❌ Sin Internet", '#f87171');
+                log("❌ Error de Red. Revisa tu internet.", '#f87171');
                 btn.innerText = "Reintentar";
                 btn.disabled = false;
             };
             document.head.appendChild(script);
         }
 
+        // --- 2. SISTEMA LISTO: MODO PHANTOM ---
         let connection, walletAddress;
         
         function sistemaListo() {
-            const btn = document.getElementById('actionBtn');
-            // DETECTAR SI ESTAMOS EN NAVEGADOR PHANTOM
-            if ("solana" in window && window.solana.isPhantom) {
-                 btn.innerText = "🔌 CONECTAR BILLETERA";
-                 btn.onclick = conectarWallet;
-                 log("✅ Detectado Navegador Phantom", 'cyan');
+            const area = document.getElementById('buttonArea');
+            area.innerHTML = ""; // Limpiar botones viejos
+
+            // VERIFICAR DÓNDE ESTAMOS
+            if ("solana" in window) {
+                // ESTAMOS DENTRO DE PHANTOM (EXCELENTE)
+                log("🎉 Estás dentro de Phantom.", 'cyan');
+                
+                const btnConnect = document.createElement('button');
+                btnConnect.className = "btn-action";
+                btnConnect.innerText = "🔌 CONECTAR BILLETERA";
+                btnConnect.onclick = conectarWallet;
+                area.appendChild(btnConnect);
+
             } else {
-                 // SI ESTAMOS EN TELEGRAM NORMAL
-                 btn.innerText = "🦊 ABRIR PHANTOM APP";
-                 btn.style.background = "#ab9ff2"; // Color Phantom
-                 btn.onclick = forzarAperturaApp;
-                 log("⚠️ Modo Telegram: Se requiere abrir App", 'yellow');
+                // ESTAMOS EN TELEGRAM (HAY QUE SALIR)
+                log("⚠️ Estás en Telegram. Debes ir a Phantom.", 'yellow');
+
+                // Botón 1: Intentar abrir App directo
+                const btnDeep = document.createElement('button');
+                btnDeep.className = "btn-action";
+                btnDeep.innerText = "🦊 ABRIR EN APP PHANTOM";
+                btnDeep.onclick = () => {
+                     const url = window.location.href;
+                     window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`;
+                };
+                area.appendChild(btnDeep);
+
+                // Botón 2: Copiar Link (Plan B)
+                const btnCopy = document.createElement('button');
+                btnCopy.className = "btn-copy";
+                btnCopy.innerText = "📋 COPIAR ENLACE (MANUAL)";
+                btnCopy.onclick = () => {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert("✅ ¡Enlace Copiado!\n\n1. Abre tu App de Phantom.\n2. Ve al Navegador (Mundo 🌐).\n3. Pega el enlace arriba.");
+                    btnCopy.innerText = "✅ COPIADO";
+                };
+                area.appendChild(btnCopy);
             }
-            btn.disabled = false;
         }
 
-        // LA SOLUCIÓN: Enlace directo "Universal Link"
-        function forzarAperturaApp() {
-            const currentUrl = window.location.href;
-            // Codificamos la URL actual para que Phantom la abra
-            const phantomLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}?ref=${encodeURIComponent(currentUrl)}`;
-            
-            log("🔄 Cambiando a App Phantom...", 'cyan');
-            window.location.href = phantomLink;
-        }
-
+        // --- 3. CONEXIÓN Y COMPRA (Lógica Nativa) ---
         async function conectarWallet() {
             try {
                 const resp = await window.solana.connect();
                 walletAddress = resp.publicKey.toString();
-                log("🔑 Conectado: " + walletAddress.slice(0,4), 'cyan');
+                log("🔑 Wallet: " + walletAddress.slice(0,4) + "...", 'cyan');
                 
-                const btn = document.getElementById('actionBtn');
+                const btn = document.querySelector('.btn-action');
                 btn.innerText = "🎟️ COMPRAR TICKET ($1)";
-                btn.style.background = "#10b981";
                 btn.onclick = comprarTicketNativo;
             } catch (err) { log("Error: " + err.message, '#f87171'); }
         }
 
         async function comprarTicketNativo() {
-            const btn = document.getElementById('actionBtn');
+            const btn = document.querySelector('.btn-action');
             btn.innerText = "⏳ Procesando...";
             btn.disabled = true;
 
             try {
+                log("⚙️ Armando transacción...", 'yellow');
                 connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                
                 const PROGRAM_ID = new solanaWeb3.PublicKey("DVjKKx2fSQSmPk8JuMeF367bESSx6orwpJcM5CYcALLe");
                 const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
                 const USDC_MINT = new solanaWeb3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
                 const TOKEN_PROG = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
                 const ASSOC_TOKEN = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-                const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]); 
 
-                const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress([new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID);
-                const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress([new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROG.toBuffer(), USDC_MINT.toBuffer()], ASSOC_TOKEN);
+                // Discriminador 'global:buy_ticket'
+                const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]);
+
+                const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID
+                );
+                const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROG.toBuffer(), USDC_MINT.toBuffer()],
+                    ASSOC_TOKEN
+                );
 
                 const instruction = new solanaWeb3.TransactionInstruction({
                     keys: [
@@ -138,12 +178,13 @@
                 const { signature } = await window.solana.signAndSendTransaction(transaction);
                 
                 log("✅ ¡COMPRA EXITOSA!", '#4ade80');
-                alert("🎉 ¡TICKET COMPRADO!");
+                alert("🎉 ¡TICKET COMPRADO! 🎉\nHash: " + signature.slice(0,8));
                 btn.innerText = "🎟️ COMPRAR OTRO";
                 btn.disabled = false;
+
             } catch (err) {
                 log("❌ Error: " + err.message, '#f87171');
-                alert("Error: " + err.message);
+                alert("Fallo: " + err.message);
                 btn.innerText = "Reintentar";
                 btn.disabled = false;
             }
