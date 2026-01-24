@@ -3,83 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN Test</title>
+    <title>Q-WIN Test v2</title>
 
     <style>
         body { background: #111; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        
-        /* Estilos del Botón a prueba de fallos */
         .boton-gigante {
-            background-color: #00ff88; /* Verde Neón */
-            color: #000;
-            width: 100%;
-            padding: 20px;
-            font-size: 20px;
-            font-weight: bold;
-            border: none;
-            border-radius: 15px;
-            margin-top: 20px;
-            cursor: pointer;
-            box-shadow: 0 5px 0 #009955; /* Sombra 3D */
+            background-color: #00ff88; color: #000; width: 100%; padding: 20px;
+            font-size: 20px; font-weight: bold; border: none; border-radius: 15px;
+            margin-top: 20px; cursor: pointer; box-shadow: 0 5px 0 #009955;
         }
-        .boton-gigante:active {
-            background-color: #00cc66;
-            transform: translateY(4px); /* Se hunde al tocar */
-            box-shadow: 0 1px 0 #009955;
-        }
-
-        /* Caja Roja de Errores */
-        #errorBox {
-            background: #ff4444;
-            color: white;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            display: none; /* Se oculta si todo está bien */
-            text-align: left;
-        }
-
-        #consoleLog {
-            background: #222;
-            color: #0f0;
-            font-family: monospace;
-            padding: 10px;
-            border-radius: 8px;
-            height: 100px;
-            overflow-y: scroll;
-            margin-bottom: 20px;
-            text-align: left;
-            font-size: 10px;
-            border: 1px solid #333;
-        }
+        .boton-gigante:active { transform: translateY(4px); box-shadow: 0 1px 0 #009955; }
+        #errorBox { background: #ff4444; color: white; padding: 10px; margin: 10px 0; border-radius: 8px; text-align: left; display: none; }
+        #consoleLog { background: #222; color: #0f0; font-family: monospace; padding: 10px; border-radius: 8px; height: 100px; overflow-y: scroll; text-align: left; font-size: 10px; }
     </style>
 
     <script>
-        window.onerror = function(message, source, lineno, colno, error) {
-            const box = document.getElementById('errorBox');
-            box.style.display = 'block';
-            box.innerHTML += "<b>💀 ERROR FATAL:</b><br>" + message + "<br>Línea: " + lineno + "<br><hr>";
-            return false;
+        window.onerror = function(msg, source, lineno) {
+            document.getElementById('errorBox').style.display = 'block';
+            document.getElementById('errorBox').innerHTML += "💀 ERROR: " + msg + "<br>Línea: " + lineno + "<hr>";
         };
-
         function log(msg) {
             const c = document.getElementById('consoleLog');
-            const time = new Date().toLocaleTimeString();
-            c.innerHTML = `[${time}] ${msg}<br>` + c.innerHTML;
+            c.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + c.innerHTML;
         }
     </script>
 </head>
 <body>
-
-    <h1>🚑 DIAGNÓSTICO</h1>
-    
+    <h1>🚑 DIAGNÓSTICO V2</h1>
     <div id="errorBox"></div>
-    <div id="consoleLog">Iniciando sistema...</div>
+    <div id="consoleLog">Esperando...</div>
 
-    <button id="testBtn" class="boton-gigante" onclick="probarClick()">
-        👆 TOCAME PRIMERO
+    <button id="testBtn" class="boton-gigante" onclick="cargarScripts()">
+        👆 TOCAME OTRA VEZ
     </button>
 
     <button id="connectBtn" class="boton-gigante" style="background-color: #3399ff; display:none;" onclick="conectarReal()">
@@ -87,22 +42,15 @@
     </button>
 
     <script>
-        function probarClick() {
-            alert("✅ ¡VIVO! El botón funciona.\nAhora intentaremos cargar Solana.");
-            log("Usuario tocó el botón. Cargando scripts...");
-            cargarScripts();
-        }
-
         function cargarScripts() {
             const btn = document.getElementById('testBtn');
-            btn.innerText = "⏳ Cargando Cerebro...";
+            btn.innerText = "⏳ Descargando de JSDelivr...";
             btn.disabled = true;
-            btn.style.backgroundColor = "#555";
 
-            // Cargamos librerías dinámicamente
+            // CAMBIO CLAVE: Usamos jsdelivr en lugar de unpkg
             const scripts = [
-                "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js",
-                "https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"
+                "https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js",
+                "https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.0/lib/index.iife.min.js"
             ];
 
             let cargados = 0;
@@ -111,40 +59,38 @@
                 script.src = url;
                 script.onload = () => {
                     cargados++;
-                    log("Librería cargada: " + url.split('/').pop());
+                    log("✅ Cargado: " + url.split('/').slice(-3,-2)); // Muestra nombre librería
                     if (cargados === scripts.length) {
                         sistemaListo();
                     }
                 };
                 script.onerror = () => {
-                    throw new Error("No se pudo cargar " + url);
+                    alert("Falló la descarga de: " + url);
+                    btn.innerText = "❌ Reintentar";
+                    btn.disabled = false;
                 };
                 document.head.appendChild(script);
             });
         }
 
         function sistemaListo() {
-            log("🚀 SISTEMA LISTO.");
+            log("🚀 LIBRERÍAS LISTAS.");
             document.getElementById('testBtn').style.display = 'none';
-            const connectBtn = document.getElementById('connectBtn');
-            connectBtn.style.display = 'block';
+            document.getElementById('connectBtn').style.display = 'block';
         }
 
         async function conectarReal() {
             try {
                 if ("solana" in window) {
-                    log("Intentando conectar a Phantom...");
                     const resp = await window.solana.connect();
-                    alert("🎉 ¡CONEXIÓN EXITOSA!\nAddress: " + resp.publicKey.toString().slice(0,6));
-                    log("Address: " + resp.publicKey.toString());
+                    alert("🎉 ¡EXITO! Billetera conectada: " + resp.publicKey.toString().slice(0,4));
                 } else {
-                    alert("⚠️ No detecto Phantom aquí.");
-                    window.location.href = "https://phantom.app/ul/browse/" + encodeURIComponent(window.location.href);
+                    // Deep link corregido para Android/iOS
+                    const url = window.location.href;
+                    const link = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`;
+                    window.location.href = link;
                 }
-            } catch (err) {
-                alert("Error: " + err.message);
-                log("Error: " + err.message);
-            }
+            } catch (err) { alert("Error: " + err.message); }
         }
     </script>
 </body>
