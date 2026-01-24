@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Q-WIN V3</title>
+    <title>Q-WIN V4</title>
 
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         
-        .btn-action {
+        .btn-green {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white; width: 100%; padding: 18px;
             font-size: 18px; font-weight: bold; border: none; border-radius: 16px;
             margin-top: 15px; cursor: pointer; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
         }
-        
-        .btn-copy {
-            background: #3b82f6; color: white; width: 100%; padding: 15px;
+
+        /* Botón de Gasolina (Amarillo) */
+        .btn-yellow {
+            background: #f59e0b; color: #fff; width: 100%; padding: 15px;
             font-size: 16px; font-weight: bold; border: none; border-radius: 16px;
-            margin-top: 10px; cursor: pointer;
+            margin-top: 10px; cursor: pointer; display: none; /* Se oculta al principio */
         }
 
         #consoleLog { 
@@ -31,15 +32,20 @@
 </head>
 <body>
 
-    <h2 class="text-xl font-bold mb-1">🎱 Q-WIN FIXED</h2>
-    <p class="text-xs text-gray-400 mb-4">Versión Browser-Native</p>
+    <h2 class="text-xl font-bold mb-1">⛽ Q-WIN GAS STATION</h2>
+    <p class="text-xs text-gray-400 mb-4">Sistema de Auto-Fondeo</p>
 
     <div id="consoleLog">Iniciando...</div>
+    
     <div id="buttonArea">
-        <button id="loadBtn" class="btn-action" onclick="iniciarCarga()">
+        <button id="loadBtn" class="btn-green" onclick="iniciarCarga()">
             🚀 CARGAR SISTEMA
         </button>
     </div>
+
+    <button id="gasBtn" class="btn-yellow" onclick="pedirGasolina()">
+        ⛽ PEDIR 1 SOL GRATIS
+    </button>
 
     <script>
         function log(msg, color='#4ade80') {
@@ -48,7 +54,7 @@
             c.innerHTML = `<div style="color:${color}">[${time}] ${msg}</div>` + c.innerHTML;
         }
 
-        // --- 1. CARGA MOTOR WEB3 ---
+        // --- 1. CARGA MOTOR ---
         function iniciarCarga() {
             const btn = document.getElementById('loadBtn');
             btn.innerText = "⏳ Cargando...";
@@ -58,7 +64,7 @@
             script.src = "https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js";
             
             script.onload = () => {
-                log("✅ Motor Web3 Listo", '#4ade80');
+                log("✅ Motor Listo", '#4ade80');
                 sistemaListo();
             };
             script.onerror = () => {
@@ -77,57 +83,88 @@
             area.innerHTML = ""; 
 
             if ("solana" in window) {
-                log("🎉 Estás dentro de Phantom.", 'cyan');
-                const btnConnect = document.createElement('button');
-                btnConnect.className = "btn-action";
-                btnConnect.innerText = "🔌 CONECTAR BILLETERA";
-                btnConnect.onclick = conectarWallet;
-                area.appendChild(btnConnect);
+                log("🎉 Phantom Detectado.", 'cyan');
+                const btn = document.createElement('button');
+                btn.className = "btn-green";
+                btn.innerText = "🔌 CONECTAR BILLETERA";
+                btn.onclick = conectarWallet;
+                area.appendChild(btn);
             } else {
-                log("⚠️ Estás fuera de Phantom.", 'yellow');
+                log("⚠️ Abre esto en la App de Phantom.", 'yellow');
                 const btnCopy = document.createElement('button');
-                btnCopy.className = "btn-copy";
+                btnCopy.style.background = "#3b82f6";
+                btnCopy.style.padding = "15px";
+                btnCopy.style.width = "100%";
+                btnCopy.style.borderRadius = "10px";
                 btnCopy.innerText = "📋 COPIAR ENLACE";
-                btnCopy.onclick = () => {
-                    navigator.clipboard.writeText(window.location.href);
-                    alert("✅ Enlace Copiado. Pégalo en Phantom.");
-                };
+                btnCopy.onclick = () => { navigator.clipboard.writeText(window.location.href); alert("Copiado!"); };
                 area.appendChild(btnCopy);
             }
         }
 
-        // --- 3. CONEXIÓN ---
         async function conectarWallet() {
             try {
                 const resp = await window.solana.connect();
                 walletAddress = resp.publicKey.toString();
                 log("🔑 Wallet: " + walletAddress.slice(0,4) + "...", 'cyan');
                 
-                const btn = document.querySelector('.btn-action');
-                btn.innerText = "🎟️ COMPRAR TICKET ($1)";
+                // Mostrar Botón de Gasolina
+                document.getElementById('gasBtn').style.display = "block";
+
+                const btn = document.querySelector('.btn-green');
+                btn.innerText = "🎟️ COMPRAR TICKET";
                 btn.onclick = comprarTicketNativo;
+
             } catch (err) { log("Error: " + err.message, '#f87171'); }
         }
 
-        // --- 4. COMPRA (CORREGIDA SIN BUFFER) ---
+        // --- 3. FUNCIÓN DE GASOLINA (AIRDROP) ---
+        async function pedirGasolina() {
+            const btn = document.getElementById('gasBtn');
+            btn.innerText = "⏳ Pidiendo dinero al cielo...";
+            btn.disabled = true;
+
+            try {
+                connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                const pubKey = new solanaWeb3.PublicKey(walletAddress);
+                
+                log("💸 Solicitando Airdrop...", 'yellow');
+                
+                // Pedir 1 SOL (1000000000 Lamports)
+                const signature = await connection.requestAirdrop(pubKey, 1000000000);
+                
+                log("⏳ Confirmando depósito...", 'orange');
+                await connection.confirmTransaction(signature);
+
+                log("✅ ¡DINERO RECIBIDO! 💰", '#4ade80');
+                alert("🎉 ¡LISTO! Ya tienes 1 SOL de mentiras.\nAhora sí, compra el ticket.");
+                
+                btn.style.display = "none"; // Ocultar botón tras éxito
+
+            } catch (err) {
+                log("❌ Falló el Airdrop: " + err.message, '#f87171');
+                alert("Los grifos están cerrados hoy. Intenta más tarde o busca 'Solana Faucet' en Google.");
+                btn.innerText = "⛽ Reintentar";
+                btn.disabled = false;
+            }
+        }
+
+        // --- 4. COMPRA TICKET ---
         async function comprarTicketNativo() {
-            const btn = document.querySelector('.btn-action');
+            const btn = document.querySelector('.btn-green');
             btn.innerText = "⏳ Procesando...";
             btn.disabled = true;
 
             try {
-                log("⚙️ Armando transacción...", 'yellow');
                 connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
                 
+                // Constantes
                 const PROGRAM_ID = new solanaWeb3.PublicKey("DVjKKx2fSQSmPk8JuMeF367bESSx6orwpJcM5CYcALLe");
                 const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
                 const USDC_MINT = new solanaWeb3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
                 const TOKEN_PROG = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
                 const ASSOC_TOKEN = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
-                // --- AQUÍ ESTABA EL ERROR ---
-                // El navegador no entiende 'Buffer', pero sí 'Uint8Array'.
-                // Pasamos los números directamente.
                 const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]);
 
                 const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress(
@@ -149,20 +186,19 @@
                         { pubkey: TOKEN_PROG, isSigner: false, isWritable: false }
                     ],
                     programId: PROGRAM_ID,
-                    data: discriminador // <--- CAMBIO CLAVE: Sin 'Buffer.from'
+                    data: discriminador
                 });
 
                 const transaction = new solanaWeb3.Transaction().add(instruction);
                 transaction.feePayer = new solanaWeb3.PublicKey(walletAddress);
-                
                 const { blockhash } = await connection.getLatestBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                log("📝 Pidiendo firma...", 'cyan');
+                log("📝 Firmando...", 'cyan');
                 const { signature } = await window.solana.signAndSendTransaction(transaction);
                 
-                log("✅ ¡COMPRA EXITOSA!", '#4ade80');
-                alert("🎉 ¡FELICITACIONES! \nTicket Comprado.\nHash: " + signature.slice(0,8));
+                log("✅ COMPRA ÉXITOSA", '#4ade80');
+                alert("🎉 ¡TICKET COMPRADO! \nHash: " + signature.slice(0,8));
                 btn.innerText = "🎟️ COMPRAR OTRO";
                 btn.disabled = false;
 
