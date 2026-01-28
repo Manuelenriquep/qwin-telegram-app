@@ -109,7 +109,6 @@
                 
                 log("💸 Pidiendo 0.5 SOL...", 'yellow');
                 
-                // CAMBIO CLAVE: Pedimos 500,000,000 Lamports (0.5 SOL) en vez de 1 SOL
                 const signature = await connection.requestAirdrop(pubKey, 500000000);
                 
                 log("⏳ Confirmando...", 'orange');
@@ -121,7 +120,7 @@
 
             } catch (err) {
                 log("❌ Falló: " + err.message, '#f87171');
-                alert("Sigue fallando. Intenta el enlace de Helius abajo.");
+                alert("Si ya tienes SOL en la wallet, ignora este error y compra el ticket.");
                 btn.innerText = "⛽ Reintentar";
                 btn.disabled = false;
             }
@@ -133,14 +132,19 @@
             btn.disabled = true;
 
             try {
-                // ... (El resto del código de compra es igual) ...
                 connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                
+                // === ZONA DE VARIABLES CORREGIDA ===
                 const PROGRAM_ID = new solanaWeb3.PublicKey("DVjKKx2fSQSmPk8JuMeF367bESSx6orwpJcM5CYcALLe");
                 const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
-                const USDC_MINT = new solanaWeb3.PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+                
+                // AQUÍ ESTABA EL ERROR. AHORA USAMOS LA DE DEVNET:
+                const USDC_MINT = new solanaWeb3.PublicKey("Gh9ZwEmdLJ8DscKZQbGqKSPd349VIr8Ne6MPza8uF716"); 
+                
                 const TOKEN_PROG = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
                 const ASSOC_TOKEN = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
                 const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]);
+                // ===================================
 
                 const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress([new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID);
                 const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress([new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROG.toBuffer(), USDC_MINT.toBuffer()], ASSOC_TOKEN);
@@ -165,7 +169,7 @@
 
                 const { signature } = await window.solana.signAndSendTransaction(transaction);
                 log("✅ COMPRA EXITOSA", '#4ade80');
-                alert("🎉 ¡TICKET COMPRADO!");
+                alert("🎉 ¡TICKET COMPRADO! Eres parte de la historia.");
                 btn.innerText = "🎟️ COMPRAR OTRO";
                 btn.disabled = false;
             } catch (err) {
