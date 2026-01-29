@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Q-WIN V5</title>
+
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        
+        .btn-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; width: 100%; padding: 18px;
+            font-size: 18px; font-weight: bold; border: none; border-radius: 16px;
+            margin-top: 15px; cursor: pointer; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-yellow {
+            background: #f59e0b; color: #fff; width: 100%; padding: 15px;
+            font-size: 16px; font-weight: bold; border: none; border-radius: 16px;
+            margin-top: 10px; cursor: pointer; display: none;
+        }
+
+        #consoleLog { 
+            background: #1e293b; color: #4ade80; 
+            font-family: monospace; padding: 15px; border-radius: 12px; 
+            height: 120px; overflow-y: auto; text-align: left; font-size: 11px; 
+            margin-top: 20px; border: 1px solid #334155;
+        }
+    </style>
+</head>
+<body>
+
+    <h2 class="text-xl font-bold mb-1">⛽ Q-WIN MICRO</h2>
+    <p class="text-xs text-gray-400 mb-4">Estrategia de Micropagos</p>
+
+    <div id="consoleLog">Iniciando...</div>
+    
+    <div id="buttonArea">
+        <button id="loadBtn" class="btn-green" onclick="iniciarCarga()">
+            🚀 CARGAR SISTEMA
+        </button>
+    </div>
+
+    <button id="gasBtn" class="btn-yellow" onclick="pedirGasolina()">
+        ⛽ PEDIR 0.5 SOL (Intentar)
+    </button>
+
+    <script>
+        function log(msg, color='#4ade80') {
+            const c = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            c.innerHTML = `<div style="color:${color}">[${time}] ${msg}</div>` + c.innerHTML;
+        }
+
+        function iniciarCarga() {
+            const btn = document.getElementById('loadBtn');
+            btn.innerText = "⏳ Cargando...";
+            btn.disabled = true;
+
+            const script = document.createElement('script');
+            script.src = "https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js";
+            
+            script.onload = () => { log("✅ Motor Listo", '#4ade80'); sistemaListo(); };
+            script.onerror = () => { log("❌ Error Red.", '#f87171'); btn.disabled = false; };
+            document.head.appendChild(script);
+        }
+
+        let connection, walletAddress;
+        
+        function sistemaListo() {
+            const area = document.getElementById('buttonArea');
+            area.innerHTML = ""; 
+
+            if ("solana" in window) {
+                log("🎉 Phantom Detectado.", 'cyan');
+                const btn = document.createElement('button');
+                btn.className = "btn-green";
+                btn.innerText = "🔌 CONECTAR BILLETERA";
+                btn.onclick = conectarWallet;
+                area.appendChild(btn);
+            } else {
+                log("⚠️ Usar en Phantom App.", 'yellow');
+            }
+        }
+
+        async function conectarWallet() {
+            try {
+                const resp = await window.solana.connect();
+                walletAddress = resp.publicKey.toString();
+                log("🔑 Wallet: " + walletAddress.slice(0,4) + "...", 'cyan');
+                document.getElementById('gasBtn').style.display = "block";
+                
+                const btn = document.querySelector('.btn-green');
+                btn.innerText = "🎟️ COMPRAR TICKET";
+                btn.onclick = comprarTicketNativo;
+            } catch (err) { log("Error: " + err.message, '#f87171'); }
+        }
+
+        // --- ESTRATEGIA DE HUMILDAD: PEDIR MENOS ---
+        async function pedirGasolina() {
+            const btn = document.getElementById('gasBtn');
+            btn.innerText = "⏳ Probando suerte...";
+            btn.disabled = true;
+
+            try {
+                connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                const pubKey = new solanaWeb3.PublicKey(walletAddress);
+                
+                log("💸 Pidiendo 0.5 SOL...", 'yellow');
+                
+                const signature = await connection.requestAirdrop(pubKey, 500000000);
+                
+                log("⏳ Confirmando...", 'orange');
+                await connection.confirmTransaction(signature);
+
+                log("✅ ¡LLEGÓ EL DINERO! 💰", '#4ade80');
+                alert("🎉 ¡YA TIENES SALDO!\nAhora compra el ticket.");
+                btn.style.display = "none"; 
+
+            } catch (err) {
+                log("❌ Falló: " + err.message, '#f87171');
+                alert("Si ya tienes SOL en la wallet, ignora este error y compra el ticket.");
+                btn.innerText = "⛽ Reintentar";
+                btn.disabled = false;
+            }
+        }
+
+        async function comprarTicketNativo() {
+            const btn = document.querySelector('.btn-green');
+            btn.innerText = "⏳ Procesando...";
+            btn.disabled = true;
+
+            try {
+                connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+                
+                // === ZONA DE VARIABLES CORREGIDA ===
+                const PROGRAM_ID = new solanaWeb3.PublicKey("DVjKKx2fSQSmPk8JuMeF367bESSx6orwpJcM5CYcALLe");
+                const ROOM_ID = new solanaWeb3.PublicKey("H7pLbbnVqjA45eji9a5ABTN1HTKrW3k3keXpCVHunzFt");
+                
+                // AQUÍ ESTABA EL ERROR. AHORA USAMOS LA DE DEVNET:
+                const USDC_MINT = new solanaWeb3.PublicKey("Gh9ZwEmdLJ8DscKZQbGqKSPd349VIr8Ne6MPza8uF716"); 
+                
+                const TOKEN_PROG = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+                const ASSOC_TOKEN = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+                const discriminador = new Uint8Array([163, 50, 194, 250, 219, 14, 222, 126]);
+                // ===================================
+
+                const [vaultPda] = await solanaWeb3.PublicKey.findProgramAddress([new TextEncoder().encode("vault"), ROOM_ID.toBuffer()], PROGRAM_ID);
+                const [buyerAta] = await solanaWeb3.PublicKey.findProgramAddress([new solanaWeb3.PublicKey(walletAddress).toBuffer(), TOKEN_PROG.toBuffer(), USDC_MINT.toBuffer()], ASSOC_TOKEN);
+
+                const instruction = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: ROOM_ID, isSigner: false, isWritable: true },
+                        { pubkey: vaultPda, isSigner: false, isWritable: true },
+                        { pubkey: new solanaWeb3.PublicKey(walletAddress), isSigner: true, isWritable: true },
+                        { pubkey: buyerAta, isSigner: false, isWritable: true },
+                        { pubkey: USDC_MINT, isSigner: false, isWritable: false },
+                        { pubkey: TOKEN_PROG, isSigner: false, isWritable: false }
+                    ],
+                    programId: PROGRAM_ID,
+                    data: discriminador
+                });
+
+                const transaction = new solanaWeb3.Transaction().add(instruction);
+                transaction.feePayer = new solanaWeb3.PublicKey(walletAddress);
+                const { blockhash } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+
+                const { signature } = await window.solana.signAndSendTransaction(transaction);
+                log("✅ COMPRA EXITOSA", '#4ade80');
+                alert("🎉 ¡TICKET COMPRADO! Eres parte de la historia.");
+                btn.innerText = "🎟️ COMPRAR OTRO";
+                btn.disabled = false;
+            } catch (err) {
+                log("❌ Error: " + err.message, '#f87171');
+                alert("Fallo: " + err.message);
+                btn.innerText = "Reintentar";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
